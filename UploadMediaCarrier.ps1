@@ -1,8 +1,9 @@
 <#
 
-Template.ps1
+UploadMediaCarrier.ps1
 
-    2018-05-30 Initial Creation
+    2018-03-19 Initial Creation
+    2018-06-19 Modify to GitHub friendly version
 
 #>
 
@@ -10,6 +11,7 @@ if (!($env:PSModulePath -match 'C:\\PowerShell\\_Modules')) {
     $env:PSModulePath = $env:PSModulePath + ';C:\PowerShell\_Modules\'
 }
 
+Import-Module WorldJournal.Ftp -Verbose -Force
 Import-Module WorldJournal.Log -Verbose -Force
 Import-Module WorldJournal.Email -Verbose -Force
 Import-Module WorldJournal.Server -Verbose -Force
@@ -35,16 +37,64 @@ Write-Line -Length 100 -Path $log
 
 
 
-$newspage = (Get-WJPath -Name newspage).Path
-$mailMsg = $mailMsg + (Write-Log -Verb "NEWSPAGE" -Noun $newspage -Path $log -Type Long -Status Normal -Output String) + "`n"
+# Set up variables
+
+#$ftp      = Get-WJFTP -Name WorldJournalNewYork
+$ftp      = Get-WJFTP -Name MediaCarrier
+$workDate = ((Get-Date).AddDays(0)).ToString("yyyyMMdd")
+$ePaper   = Get-WJPath -Name epaper
+$optimizeda = $ePaper.Path + $workDate + "\" + "optimizeda"
+$pubcode   = @("NY","CH")
+$section   = @("A","B","C","D")
+
+Write-Log -Verb "ftp" -Noun $ftp.Path -Path $log -Type Short -Status Normal
+Write-Log -Verb "ePaper" -Noun $ePaper.Path -Path $log -Type Short -Status Normal
+Write-Log -Verb "workDate" -Noun $workDate -Path $log -Type Short -Status Normal
+Write-Log -Verb "optimizeda" -Noun $optimizeda -Path $log -Type Short -Status Normal
+
+$localTemp = "C:\temp\" + $scriptName + "\"
+if (!(Test-Path($localTemp))) {New-Item $localTemp -Type Directory | Out-Null}
+
+foreach ($pub in $pubcode){
+    
+    # define regex
+    
+    $regex = $pub + $workDate + "("
+    foreach($sec in $section){$regex = $regex + ($sec + "|")}
+    $regex = $regex.Substring(0,$regex.LastIndexOf("|")) + ")\d{2}(.pdf)"
+
+    Get-ChildItem $optimizeda | Where-Object{$_.Name -match $regex} | ForEach-Object{
+
+        try{
+            Copy-Item $_.FullName ($localTemp + "\" + $_.Name) -ErrorAction Stop
+            Write-Log -Verb "COPY" -Noun $_.FullName -Path $log -Type Long -Status Good
+
+        }catch{
+            Write-Log -Verb "COPY" -Noun $_.FullName -Path $log -Type Long -Status Bad
+        
+        }
 
 
+    }
+
+}
+
+
+
+
+
+
+# Clear temp files
+
+Remove-Item $localTemp -Recurse -Force
 
 # Flag hasError 
 
 if( $false ){
     $hasError = $true
 }
+
+
 
 ###################################################################################
 
@@ -61,4 +111,4 @@ $emailParam = @{
     ScriptPath = $scriptPath
     Attachment = $log
 }
-Emailv2 @emailParam
+#Emailv2 @emailParam
