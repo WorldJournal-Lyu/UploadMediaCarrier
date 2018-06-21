@@ -74,7 +74,6 @@ foreach ($pub in $pubcode){
         
         }
 
-
     }
 
 }
@@ -84,11 +83,21 @@ foreach ($pub in $pubcode){
 
 
 
-# Clear temp files
+# Delete temp folder
 
-Remove-Item $localTemp -Recurse -Force
+Write-Log -Verb "REMOVE" -Noun $localTemp -Path $log -Type Long -Status Normal
+try{
+    $temp = $localTemp
+    Remove-Item $localTemp -Recurse -Force -ErrorAction Stop
+    $mailMsg = $mailMsg + (Write-Log -Verb "REMOVE" -Noun $temp -Path $log -Type Long -Status Good -Output String) + "`n"
+}catch{
+    $mailMsg = $mailMsg + (Write-Log -Verb "REMOVE" -Noun $temp -Path $log -Type Long -Status Bad -Output String) + "`n"
+    $mailMsg = $mailMsg + (Write-Log -Verb "Exception" -Noun $_.Exception.Message -Path $log -Type Short -Status Bad -Output String) + "`n"
+}
 
-# Flag hasError 
+
+
+# Set hasError status 
 
 if( $false ){
     $hasError = $true
