@@ -4,6 +4,7 @@ UploadMediaCarrier.ps1
 
     2018-03-19 Initial Creation
     2018-06-19 Modify to GitHub friendly version
+    2018-06-27 Modify file search method, query database for actual page info instead of get-childitem
 
 #>
 
@@ -15,6 +16,7 @@ Import-Module WorldJournal.Ftp -Verbose -Force
 Import-Module WorldJournal.Log -Verbose -Force
 Import-Module WorldJournal.Email -Verbose -Force
 Import-Module WorldJournal.Server -Verbose -Force
+Import-Module WorldJournal.Database -Verbose -Force
 
 $scriptPath = $MyInvocation.MyCommand.Path
 $scriptName = (($MyInvocation.MyCommand) -Replace ".ps1")
@@ -30,6 +32,9 @@ $mailTo     = (Get-WJEmail -Name lyu).MailAddress
 $mailSbj    = $scriptName
 $mailMsg    = ""
 
+$localTemp = "C:\temp\" + $scriptName + "\"
+if (!(Test-Path($localTemp))) {New-Item $localTemp -Type Directory | Out-Null}
+
 Write-Log -Verb "LOG START" -Noun $log -Path $log -Type Long -Status Normal
 Write-Line -Length 100 -Path $log
 
@@ -39,48 +44,72 @@ Write-Line -Length 100 -Path $log
 
 # Set up variables
 
-#$ftp      = Get-WJFTP -Name WorldJournalNewYork
-$ftp      = Get-WJFTP -Name MediaCarrier
-$workDate = ((Get-Date).AddDays(0)).ToString("yyyyMMdd")
+$workDate = ((Get-Date).AddDays(0))
+$pubcode  = "'114', '146'"
+$section  = "'A', 'B', 'C', 'D'"
+$db       = Get-WJDatabase -Name marco6
+$ftp      = Get-WJFTP -Name MediaCarrier #WorldJournalNewYork (for testing)
 $ePaper   = Get-WJPath -Name epaper
-$optimizeda = $ePaper.Path + $workDate + "\" + "optimizeda"
-$pubcode   = @("NY","CH")
-$section   = @("A","B","C","D")
+$optimizeda = $ePaper.Path + $workDate.ToString("yyyyMMdd") + "\" + "optimizeda\"
 
-Write-Log -Verb "ftp" -Noun $ftp.Path -Path $log -Type Short -Status Normal
-Write-Log -Verb "ePaper" -Noun $ePaper.Path -Path $log -Type Short -Status Normal
-Write-Log -Verb "workDate" -Noun $workDate -Path $log -Type Short -Status Normal
+Write-Log -Verb "workDate  " -Noun $workDate.ToString("yyyyMMdd") -Path $log -Type Short -Status Normal
+Write-Log -Verb "db        " -Noun $db.Name -Path $log -Type Short -Status Normal
+Write-Log -Verb "ftp       " -Noun $ftp.Path -Path $log -Type Short -Status Normal
+Write-Log -Verb "ePaper    " -Noun $ePaper.Path -Path $log -Type Short -Status Normal
 Write-Log -Verb "optimizeda" -Noun $optimizeda -Path $log -Type Short -Status Normal
 
-$localTemp = "C:\temp\" + $scriptName + "\"
-if (!(Test-Path($localTemp))) {New-Item $localTemp -Type Directory | Out-Null}
 
-foreach ($pub in $pubcode){
-    
-    # define regex
-    
-    $regex = $pub + $workDate + "("
-    foreach($sec in $section){$regex = $regex + ($sec + "|")}
-    $regex = $regex.Substring(0,$regex.LastIndexOf("|")) + ")\d{2}(.pdf)"
 
-    Get-ChildItem $optimizeda | Where-Object{$_.Name -match $regex} | ForEach-Object{
+# Set up query
+
+[String]$usrnm = $db.Username
+[String]$pswrd = $db.Password
+[String]$dtsrc = $db.Datasource
+[String]$qry = Get-Content -Path ((Split-Path $MyInvocation.MyCommand.Path -Parent)+"\"+($MyInvocation.MyCommand.Name -replace '.ps1', '.Query.txt'))
+$qry = $qry.Replace('$workDate', $workDate.ToString("yyyy-MM-dd"))
+$qry = $qry.Replace('$pubcode', $pubcode)
+$qry = $qry.Replace('$section', $section)
+$result = Query-Database -Username $usrnm -Password $pswrd -Datasource $dtsrc -Query $qry
+
+
+
+# Process query result
+
+$result.pubid | Select-Object -Unique | ForEach-Object{
+    
+    $pubid = $_
+
+    switch($pubid){
+        "114" { $pubname = "NY"; break; }
+        "141" { $pubname = "NJ"; break; }
+        "142" { $pubname = "DC"; break; }
+        "143" { $pubname = "BO"; break; }
+        "144" { $pubname = "AT"; break; }
+        "146" { $pubname = "CH"; break; }
+    }
+
+    $pubname
+
+    $result | Where-Object{ $_.pubid -eq $pubid } | Select-Object section, page | ForEach-Object{
+
+        $pdfName = $pubname + $workDate.ToString("yyyyMMdd") + $_.section + ($_.page).ToString("00") + ".pdf"
+        $copyFrom = $optimizeda + $pdfName
+        $copyTo   = $localTemp + $pdfName
 
         try{
-            Copy-Item $_.FullName ($localTemp + "\" + $_.Name) -ErrorAction Stop
-            Write-Log -Verb "COPY" -Noun $_.FullName -Path $log -Type Long -Status Good
+
+            Write-Log -Verb "COPY FROM" -Noun $copyFrom -Path $log -Type Long -Status Normal
+            Copy-Item $copyFrom $copyTo -ErrorAction Stop
+            Write-Log -Verb "COPY TO" -Noun $copyTo -Path $log -Type Long -Status Good
 
         }catch{
-            Write-Log -Verb "COPY" -Noun $_.FullName -Path $log -Type Long -Status Bad
+
+            Write-Log -Verb "COPY TO" -Noun $copyTo -Path $log -Type Long -Status Bad
         
         }
 
     }
-
 }
-
-
-
-
 
 
 # Delete temp folder
