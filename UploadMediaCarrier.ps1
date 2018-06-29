@@ -48,7 +48,7 @@ $workDate = ((Get-Date).AddDays(0))
 $pubcode  = "'114', '146'"
 $section  = "'A', 'B', 'C', 'D'"
 $db       = Get-WJDatabase -Name marco6
-$ftp      = Get-WJFTP -Name MediaCarrier #WorldJournalNewYork (for testing)
+$ftp      = Get-WJFTP -Name MediaCarrier # use "-Name WorldJournalNewYork" for testing
 $ePaper   = Get-WJPath -Name epaper
 $optimizeda = $ePaper.Path + $workDate.ToString("yyyyMMdd") + "\" + "optimizeda\"
 
@@ -57,7 +57,7 @@ Write-Log -Verb "db        " -Noun $db.Name -Path $log -Type Short -Status Norma
 Write-Log -Verb "ftp       " -Noun $ftp.Path -Path $log -Type Short -Status Normal
 Write-Log -Verb "ePaper    " -Noun $ePaper.Path -Path $log -Type Short -Status Normal
 Write-Log -Verb "optimizeda" -Noun $optimizeda -Path $log -Type Short -Status Normal
-
+Write-Line -Length 100 -Path $log
 
 
 # Set up query
@@ -88,13 +88,26 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
         "146" { $pubname = "CH"; break; }
     }
 
-    $pubname
+    Write-Log -Verb "pubid  " -Noun $pubid -Path $log -Type Short -Status Normal
+    Write-Log -Verb "pubname" -Noun $pubname -Path $log -Type Short -Status Normal
+    Write-Line -Length 100 -Path $log
 
+    $acrobat = New-Object -ComObject AcroExch.AVDoc
+    $pdf     = $null
+    $pdf2    = $null
+    $isFirst = $true
+    
     $result | Where-Object{ $_.pubid -eq $pubid } | Select-Object section, page | ForEach-Object{
 
-        $pdfName = $pubname + $workDate.ToString("yyyyMMdd") + $_.section + ($_.page).ToString("00") + ".pdf"
+        $pdfName  = $pubname + $workDate.ToString("yyyyMMdd") + $_.section + ($_.page).ToString("00") + ".pdf"
         $copyFrom = $optimizeda + $pdfName
         $copyTo   = $localTemp + $pdfName
+        Write-Log -Verb "pdfName " -Noun $pdfName -Path $log -Type Short -Status Normal
+        Write-Log -Verb "copyFrom" -Noun $copyFrom -Path $log -Type Short -Status Normal
+        Write-Log -Verb "copyTo  " -Noun $copyTo -Path $log -Type Short -Status Normal
+
+
+        # copy pdf file to temp folder
 
         try{
 
@@ -108,7 +121,59 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
         
         }
 
+
+
+        # merge pdf in workpath together
+
+        $pdfSize = ("{0:N2}" -f (((Get-Item $copyTo).Length)/1MB))
+        Write-Log -Verb "MERGE" -Noun ($copyTo + " (" + $pdfSize + " MB)") -Path $log -Type Long -Status Normal
+
+	    try{
+
+            if($isFirst) {
+
+		        $isFirst = $false
+
+		        $acrobat.Open($copyTo, "temp") | Out-Null
+		        $pdf = $acrobat.GetPDDoc()
+
+	        }else{
+
+		        $acrobat2 = New-Object -ComObject AcroExch.AVDoc
+		        $acrobat2.Open($copyTo, "temp") | Out-Null
+		        $pdf2 = $acrobat2.GetPDDoc()
+
+		        $pdf.InsertPages(($pdf.GetNumPages()-1), $pdf2, 0, $pdf2.GetNumPages(), 0) | Out-Null
+		        $pdf2.Close() | Out-Null
+		        $acrobat2.Close(1) | Out-Null
+
+	        }
+            Write-Log -Verb "MERGE" -Noun ($copyTo + " (" + $pdfSize + " MB)") -Path $log -Type Long -Status Good
+
+        }
+        catch{
+
+            Write-Log -Verb "MERGE" -Noun ($copyTo + " (" + $pdfSize + " MB)") -Path $log -Type Long -Status Bad
+            Write-Log -Verb "Exception" -Noun $_.Exception.Message -Path $log -Type Short -Status Bad
+
+        }
+
     }
+
+    # save merged pdf file
+
+    Write-Line -Length 100 -Path $log
+    $output = (Join-Path $localTemp ("WorldJournal_" + $pubname + "_" + $workDate.ToString("yyyyMMdd") + ".pdf"))
+    $pdf.Save(1, $output) | Out-Null
+    $outputPage = 0
+    $outputPage = $pdf.GetNumPages()
+    $pdf.Close() | Out-Null
+    $acrobat.Close(1) | Out-Null
+    $outputSize = ("{0:N2}" -f (((Get-Item $output).Length)/1MB))
+    Write-Log -Verb "SAVE FILE" -Noun ($output + " (" + $outputPage + " pages, " + $outputSize + " MB)") -Path $log -Type Long -Status Normal
+
+    Stop-Process -Name Acrobat
+    Write-Line -Length 100 -Path $log
 }
 
 
