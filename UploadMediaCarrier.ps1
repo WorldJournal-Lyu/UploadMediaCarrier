@@ -3,8 +3,6 @@
 UploadMediaCarrier.ps1
 
     2018-03-19 Initial Creation
-    2018-06-19 Modify to GitHub friendly version
-    2018-06-27 Modify file search method, query database for actual page info instead of get-childitem
 
 #>
 
@@ -48,7 +46,7 @@ $workDate = ((Get-Date).AddDays(0))
 $pubcode  = "'114', '146'"
 $section  = "'A', 'B', 'C', 'D'"
 $db       = Get-WJDatabase -Name marco6
-$ftp      = Get-WJFTP -Name MediaCarrier # use "-Name WorldJournalNewYork" for testing
+$ftp      = Get-WJFTP -Name MediaCarrier # -Name MediaCarrier # -Name WorldJournalNewYork
 $ePaper   = Get-WJPath -Name epaper
 $optimizeda = $ePaper.Path + $workDate.ToString("yyyyMMdd") + "\" + "optimizeda\"
 
@@ -65,19 +63,19 @@ Write-Line -Length 100 -Path $log
 [String]$usrnm = $db.Username
 [String]$pswrd = $db.Password
 [String]$dtsrc = $db.Datasource
-[String]$qry = Get-Content -Path ((Split-Path $MyInvocation.MyCommand.Path -Parent)+"\"+($MyInvocation.MyCommand.Name -replace '.ps1', '.Query.txt'))
+[String]$qry   = Get-Content -Path ((Split-Path $MyInvocation.MyCommand.Path -Parent)+"\"+($MyInvocation.MyCommand.Name -replace '.ps1', '.Query.txt'))
 $qry = $qry.Replace('$workDate', $workDate.ToString("yyyy-MM-dd"))
 $qry = $qry.Replace('$pubcode', $pubcode)
 $qry = $qry.Replace('$section', $section)
 $result = Query-Database -Username $usrnm -Password $pswrd -Datasource $dtsrc -Query $qry
 
 
-
-# Process query result
+# Process query result for each pubid
 
 $result.pubid | Select-Object -Unique | ForEach-Object{
     
     $pubid = $_
+    $expectedPage = ($result | Where-Object { $_.pubid -eq $pubid }).Count
 
     switch($pubid){
         "114" { $pubname = "NY"; break; }
@@ -90,6 +88,7 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
     Write-Log -Verb "pubid  " -Noun $pubid -Path $log -Type Short -Status Normal
     Write-Log -Verb "pubname" -Noun $pubname -Path $log -Type Short -Status Normal
+    Write-Log -Verb "expectedPage" -Noun $expectedPage -Path $log -Type Short -Status Normal
     Write-Line -Length 100 -Path $log
 
     $acrobat = New-Object -ComObject AcroExch.AVDoc
@@ -107,73 +106,135 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
         Write-Log -Verb "copyTo  " -Noun $copyTo -Path $log -Type Short -Status Normal
 
 
-        # copy pdf file to temp folder
 
-        try{
+        if(Test-Path $copyFrom){
 
-            Write-Log -Verb "COPY FROM" -Noun $copyFrom -Path $log -Type Long -Status Normal
-            Copy-Item $copyFrom $copyTo -ErrorAction Stop
-            Write-Log -Verb "COPY TO" -Noun $copyTo -Path $log -Type Long -Status Good
+            Write-Log -Verb "FILE EXIST" -Noun $copyFrom -Path $log -Type Long -Status System
 
-        }catch{
+            # copy pdf file to temp folder
 
-            Write-Log -Verb "COPY TO" -Noun $copyTo -Path $log -Type Long -Status Bad
+            try{
+
+                Write-Log -Verb "COPY FROM" -Noun $copyFrom -Path $log -Type Long -Status Normal
+                Copy-Item $copyFrom $copyTo -ErrorAction Stop
+                Write-Log -Verb "COPY TO" -Noun $copyTo -Path $log -Type Long -Status Good
+
+            }catch{
+
+                Write-Log -Verb "COPY TO" -Noun $copyTo -Path $log -Type Long -Status Bad
         
+            }
+
+            # merge pdf in workpath together
+
+            $pdfSize = ("{0:N2}" -f (((Get-Item $copyTo).Length)/1MB))
+            Write-Log -Verb "MERGE" -Noun ($copyTo + " (" + $pdfSize + " MB)") -Path $log -Type Long -Status Normal
+
+	        try{
+
+                if($isFirst) {
+
+		            $isFirst = $false
+
+		            $acrobat.Open($copyTo, "temp") | Out-Null
+		            $pdf = $acrobat.GetPDDoc()
+
+	            }else{
+
+		            $acrobat2 = New-Object -ComObject AcroExch.AVDoc
+		            $acrobat2.Open($copyTo, "temp") | Out-Null
+		            $pdf2 = $acrobat2.GetPDDoc()
+
+		            $pdf.InsertPages(($pdf.GetNumPages()-1), $pdf2, 0, $pdf2.GetNumPages(), 0) | Out-Null
+		            $pdf2.Close() | Out-Null
+		            $acrobat2.Close(1) | Out-Null
+
+	            }
+
+                Write-Log -Verb "MERGE" -Noun ($copyTo + " (" + $pdfSize + " MB)") -Path $log -Type Long -Status Good
+
+            }catch{
+
+                Write-Log -Verb "MERGE" -Noun ($copyTo + " (" + $pdfSize + " MB)") -Path $log -Type Long -Status Bad
+                Write-Log -Verb "Exception" -Noun $_.Exception.Message -Path $log -Type Short -Status Bad
+
+            }
+        }else{
+        
+            Write-Log -Verb "FILE NOT EXIST" -Noun $copyFrom -Path $log -Type Long -Status Bad
+
         }
-
-
-
-        # merge pdf in workpath together
-
-        $pdfSize = ("{0:N2}" -f (((Get-Item $copyTo).Length)/1MB))
-        Write-Log -Verb "MERGE" -Noun ($copyTo + " (" + $pdfSize + " MB)") -Path $log -Type Long -Status Normal
-
-	    try{
-
-            if($isFirst) {
-
-		        $isFirst = $false
-
-		        $acrobat.Open($copyTo, "temp") | Out-Null
-		        $pdf = $acrobat.GetPDDoc()
-
-	        }else{
-
-		        $acrobat2 = New-Object -ComObject AcroExch.AVDoc
-		        $acrobat2.Open($copyTo, "temp") | Out-Null
-		        $pdf2 = $acrobat2.GetPDDoc()
-
-		        $pdf.InsertPages(($pdf.GetNumPages()-1), $pdf2, 0, $pdf2.GetNumPages(), 0) | Out-Null
-		        $pdf2.Close() | Out-Null
-		        $acrobat2.Close(1) | Out-Null
-
-	        }
-            Write-Log -Verb "MERGE" -Noun ($copyTo + " (" + $pdfSize + " MB)") -Path $log -Type Long -Status Good
-
-        }
-        catch{
-
-            Write-Log -Verb "MERGE" -Noun ($copyTo + " (" + $pdfSize + " MB)") -Path $log -Type Long -Status Bad
-            Write-Log -Verb "Exception" -Noun $_.Exception.Message -Path $log -Type Short -Status Bad
-
-        }
-
     }
 
     # save merged pdf file
 
     Write-Line -Length 100 -Path $log
-    $output = (Join-Path $localTemp ("WorldJournal_" + $pubname + "_" + $workDate.ToString("yyyyMMdd") + ".pdf"))
+
+    $fileName = "WorldJournal_" + $pubname + "_" + $workDate.ToString("yyyyMMdd") + ".pdf"
+
+    $output = $localTemp + $fileName
     $pdf.Save(1, $output) | Out-Null
     $outputPage = 0
     $outputPage = $pdf.GetNumPages()
     $pdf.Close() | Out-Null
     $acrobat.Close(1) | Out-Null
     $outputSize = ("{0:N2}" -f (((Get-Item $output).Length)/1MB))
-    Write-Log -Verb "SAVE FILE" -Noun ($output + " (" + $outputPage + " pages, " + $outputSize + " MB)") -Path $log -Type Long -Status Normal
-
+    Write-Log -Verb "SAVE FILE" -Noun ($output + " (" + $outputSize + " MB)") -Path $log -Type Long -Status Normal
+    if($expectedPage -eq $outputPage){
+        Write-Log -Verb "PAGE CHECK" -Noun ($outputPage.ToString() + " out of " + $expectedPage.ToString()) -Path $log -Type Long -Status Good
+    }else{
+        Write-Log -Verb "PAGE CHECK" -Noun ($outputPage.ToString() + " out of " + $expectedPage.ToString()) -Path $log -Type Long -Status Bad
+        $hasError = $true
+    }
     Stop-Process -Name Acrobat
+
+
+
+    # Upload variables
+
+    $localFileName  = $fileName
+    $localFilePath  = $localTemp + $localFileName
+    $remoteFileName = $fileName
+    $remoteFilePath = $ftp.Path + $remoteFileName
+    $tempFilePath   = $localTemp + (Get-Date).ToString("yyyyMMdd-HHmmss") + ".pdf"
+    Write-Log -Verb "localFileName " -Noun $localFileName -Path $log -Type Short -Status Normal
+    Write-Log -Verb "localFilePath " -Noun $localFilePath -Path $log -Type Short -Status Normal
+    Write-Log -Verb "remoteFileName" -Noun $remoteFileName -Path $log -Type Short -Status Normal
+    Write-Log -Verb "remoteFilePath" -Noun $remoteFilePath -Path $log -Type Short -Status Normal
+    Write-Log -Verb "tempFilePath  " -Noun $tempFilePath -Path $log -Type Short -Status Normal
+
+    # Upload file from local to Ftp
+
+    Write-Log -Verb "UPLOAD FROM" -Noun $localFilePath -Path $log -Type Long -Status Normal
+    Write-Log -Verb "UPLOAD TO" -Noun $remoteFilePath -Path $log -Type Long -Status Normal
+    $upload = WebClient-UploadFile -Username $ftp.User -Password $ftp.Pass -RemoteFilePath $remoteFilePath -LocalFilePath $localFilePath
+
+    if($upload.Status -eq "Good"){
+        Write-Log -Verb $upload.Verb -Noun $upload.Noun -Path $log -Type Long -Status $upload.Status
+    }elseif($upload.Status -eq "Bad"){
+        $mailMsg = $mailMsg + (Write-Log -Verb $upload.Verb -Noun $upload.Noun -Path $log -Type Long -Status $upload.Status -Output String) + "`n"
+        $mailMsg = $mailMsg + (Write-Log -Verb "Exception" -Noun $upload.Exception -Path $log -Type Short -Status $upload.Status -Output String) + "`n"
+    }
+
+
+
+    # Download file from Ftp to temp from verification
+
+    Write-Log -Verb "DOWNLOAD FROM" -Noun $remoteFilePath -Path $log -Type Long -Status Normal
+    Write-Log -Verb "DOWNLOAD TO" -Noun $tempFilePath -Path $log -Type Long -Status Normal
+    $download = WebClient-DownloadFile -Username $ftp.User -Password $ftp.Pass -RemoteFilePath $remoteFilePath -LocalFilePath $tempFilePath
+
+    if($download.Status -eq "Good"){
+        Write-Log -Verb $download.Verb -Noun $download.Noun -Path $log -Type Long -Status $download.Status
+    }elseif($download.Status -eq "Bad"){
+        $mailMsg = $mailMsg + (Write-Log -Verb $download.Verb -Noun $download.Noun -Path $log -Type Long -Status $download.Status -Output String) + "`n"
+        $mailMsg = $mailMsg + (Write-Log -Verb "Exception" -Noun $download.Exception -Path $log -Type Short -Status $download.Status -Output String) + "`n"
+    }
+
+
+
     Write-Line -Length 100 -Path $log
+
 }
 
 
@@ -183,7 +244,7 @@ Write-Log -Verb "REMOVE" -Noun $localTemp -Path $log -Type Long -Status Normal
 try{
     $temp = $localTemp
     Remove-Item $localTemp -Recurse -Force -ErrorAction Stop
-    $mailMsg = $mailMsg + (Write-Log -Verb "REMOVE" -Noun $temp -Path $log -Type Long -Status Good -Output String) + "`n"
+    Write-Log -Verb "REMOVE" -Noun $temp -Path $log -Type Long -Status Good
 }catch{
     $mailMsg = $mailMsg + (Write-Log -Verb "REMOVE" -Noun $temp -Path $log -Type Long -Status Bad -Output String) + "`n"
     $mailMsg = $mailMsg + (Write-Log -Verb "Exception" -Noun $_.Exception.Message -Path $log -Type Short -Status Bad -Output String) + "`n"
@@ -214,4 +275,4 @@ $emailParam = @{
     ScriptPath = $scriptPath
     Attachment = $log
 }
-#Emailv2 @emailParam
+Emailv2 @emailParam
