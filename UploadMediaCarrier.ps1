@@ -58,6 +58,7 @@ Write-Log -Verb "optimizeda" -Noun $optimizeda -Path $log -Type Short -Status No
 Write-Line -Length 100 -Path $log
 
 
+
 # Set up query
 
 [String]$usrnm = $db.Username
@@ -68,6 +69,7 @@ $qry = $qry.Replace('$workDate', $workDate.ToString("yyyy-MM-dd"))
 $qry = $qry.Replace('$pubcode', $pubcode)
 $qry = $qry.Replace('$section', $section)
 $result = Query-Database -Username $usrnm -Password $pswrd -Datasource $dtsrc -Query $qry
+
 
 
 # Process query result for each pubid
@@ -111,7 +113,9 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
             Write-Log -Verb "FILE EXIST" -Noun $copyFrom -Path $log -Type Long -Status System
 
-            # copy pdf file to temp folder
+
+
+            # Copy pdf file to temp folder
 
             try{
 
@@ -125,7 +129,9 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
         
             }
 
-            # merge pdf in workpath together
+
+
+            # Merge pdf in workpath together
 
             $pdfSize = ("{0:N2}" -f (((Get-Item $copyTo).Length)/1MB))
             Write-Log -Verb "MERGE" -Noun ($copyTo + " (" + $pdfSize + " MB)") -Path $log -Type Long -Status Normal
@@ -166,7 +172,9 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
         }
     }
 
-    # save merged pdf file
+
+
+    # Save merged pdf file
 
     Write-Line -Length 100 -Path $log
 
@@ -190,7 +198,7 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
 
 
-    # Upload variables
+    # Set up upload
 
     $localFileName  = $fileName
     $localFilePath  = $localTemp + $localFileName
@@ -202,6 +210,8 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
     Write-Log -Verb "remoteFileName" -Noun $remoteFileName -Path $log -Type Short -Status Normal
     Write-Log -Verb "remoteFilePath" -Noun $remoteFilePath -Path $log -Type Short -Status Normal
     Write-Log -Verb "tempFilePath  " -Noun $tempFilePath -Path $log -Type Short -Status Normal
+
+
 
     # Upload file from local to Ftp
 
@@ -218,7 +228,7 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
 
 
-    # Download file from Ftp to temp from verification
+    # Download file from Ftp to temp folder for verification
 
     Write-Log -Verb "DOWNLOAD FROM" -Noun $remoteFilePath -Path $log -Type Long -Status Normal
     Write-Log -Verb "DOWNLOAD TO" -Noun $tempFilePath -Path $log -Type Long -Status Normal
@@ -238,6 +248,7 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 }
 
 
+
 # Delete temp folder
 
 Write-Log -Verb "REMOVE" -Noun $localTemp -Path $log -Type Long -Status Normal
@@ -254,7 +265,7 @@ try{
 
 # Set hasError status 
 
-if( $false ){
+if( ($expectedPage -ne $outputPage) -or ($upload.Status -eq "Bad") -or ($download.Status -eq "Bad") ){
     $hasError = $true
 }
 
