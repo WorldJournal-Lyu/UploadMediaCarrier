@@ -34,7 +34,7 @@ $localTemp = "C:\temp\" + $scriptName + "\"
 if (!(Test-Path($localTemp))) {New-Item $localTemp -Type Directory | Out-Null}
 
 Write-Log -Verb "LOG START" -Noun $log -Path $log -Type Long -Status Normal
-Write-Line -Length 50 -Path $log
+Write-Line -Length 38 -Path $log
 
 ###################################################################################
 
@@ -50,12 +50,12 @@ $ftp      = Get-WJFTP -Name MediaCarrier # -Name MediaCarrier # -Name WorldJourn
 $ePaper   = Get-WJPath -Name epaper
 $optimizeda = $ePaper.Path + $workDate.ToString("yyyyMMdd") + "\" + "optimizeda\"
 
-Write-Log -Verb "workDate  " -Noun $workDate.ToString("yyyyMMdd") -Path $log -Type Short -Status Normal
-Write-Log -Verb "db        " -Noun $db.Name -Path $log -Type Short -Status Normal
-Write-Log -Verb "ftp       " -Noun $ftp.Path -Path $log -Type Short -Status Normal
-Write-Log -Verb "ePaper    " -Noun $ePaper.Path -Path $log -Type Short -Status Normal
+Write-Log -Verb "workDate" -Noun $workDate.ToString("yyyyMMdd") -Path $log -Type Short -Status Normal
+Write-Log -Verb "db" -Noun $db.Name -Path $log -Type Short -Status Normal
+Write-Log -Verb "ftp" -Noun $ftp.Path -Path $log -Type Short -Status Normal
+Write-Log -Verb "ePaper" -Noun $ePaper.Path -Path $log -Type Short -Status Normal
 Write-Log -Verb "optimizeda" -Noun $optimizeda -Path $log -Type Short -Status Normal
-Write-Line -Length 50 -Path $log
+Write-Line -Length 38 -Path $log
 
 
 
@@ -88,10 +88,10 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
         "146" { $pubname = "CH"; break; }
     }
 
-    Write-Log -Verb "pubid  " -Noun $pubid -Path $log -Type Short -Status Normal
+    Write-Log -Verb "pubid" -Noun $pubid -Path $log -Type Short -Status Normal
     Write-Log -Verb "pubname" -Noun $pubname -Path $log -Type Short -Status Normal
     Write-Log -Verb "expectedPage" -Noun $expectedPage -Path $log -Type Short -Status Normal
-    Write-Line -Length 50 -Path $log
+    Write-Line -Length 38 -Path $log
 
     $acrobat = New-Object -ComObject AcroExch.AVDoc
     $pdf     = $null
@@ -103,9 +103,9 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
         $pdfName  = $pubname + $workDate.ToString("yyyyMMdd") + $_.section + ($_.page).ToString("00") + ".pdf"
         $copyFrom = $optimizeda + $pdfName
         $copyTo   = $localTemp + $pdfName
-        Write-Log -Verb "pdfName " -Noun $pdfName -Path $log -Type Short -Status Normal
+        Write-Log -Verb "pdfName" -Noun $pdfName -Path $log -Type Short -Status Normal
         Write-Log -Verb "copyFrom" -Noun $copyFrom -Path $log -Type Short -Status Normal
-        Write-Log -Verb "copyTo  " -Noun $copyTo -Path $log -Type Short -Status Normal
+        Write-Log -Verb "copyTo" -Noun $copyTo -Path $log -Type Short -Status Normal
 
 
 
@@ -119,13 +119,12 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
             try{
 
-                Write-Log -Verb "COPY FROM" -Noun $copyFrom -Path $log -Type Long -Status Normal
                 Copy-Item $copyFrom $copyTo -ErrorAction Stop
-                Write-Log -Verb "COPY TO" -Noun $copyTo -Path $log -Type Long -Status Good
+                Write-Log -Verb "COPY" -Noun $copyFrom -Path $log -Type Long -Status Good
 
             }catch{
 
-                Write-Log -Verb "COPY TO" -Noun $copyTo -Path $log -Type Long -Status Bad
+                Write-Log -Verb "COPY" -Noun $copyFrom -Path $log -Type Long -Status Bad
         
             }
 
@@ -134,7 +133,6 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
             # Merge pdf in workpath together
 
             $pdfSize = ("{0:N2}" -f (((Get-Item $copyTo).Length)/1MB))
-            Write-Log -Verb "MERGE" -Noun ($copyTo + " (" + $pdfSize + " MB)") -Path $log -Type Long -Status Normal
 
 	        try{
 
@@ -165,6 +163,7 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
                 Write-Log -Verb "Exception" -Noun $_.Exception.Message -Path $log -Type Short -Status Bad
 
             }
+
         }else{
         
             Write-Log -Verb "FILE NOT EXIST" -Noun $copyFrom -Path $log -Type Long -Status Bad
@@ -176,7 +175,7 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
     # Save merged pdf file
 
-    Write-Line -Length 50 -Path $log
+    Write-Line -Length 38 -Path $log
 
     $fileName = "WorldJournal_" + $pubname + "_" + $workDate.ToString("yyyyMMdd") + ".pdf"
 
@@ -198,26 +197,23 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
 
 
-    # Set up upload
+    # Set up upload and download variables
 
-    $localFileName  = $fileName
-    $localFilePath  = $localTemp + $localFileName
-    $remoteFileName = $fileName
-    $remoteFilePath = $ftp.Path + $remoteFileName
-    $tempFilePath   = $localTemp + (Get-Date).ToString("yyyyMMdd-HHmmss") + ".pdf"
-    Write-Log -Verb "localFileName " -Noun $localFileName -Path $log -Type Short -Status Normal
-    Write-Log -Verb "localFilePath " -Noun $localFilePath -Path $log -Type Short -Status Normal
-    Write-Log -Verb "remoteFileName" -Noun $remoteFileName -Path $log -Type Short -Status Normal
-    Write-Log -Verb "remoteFilePath" -Noun $remoteFilePath -Path $log -Type Short -Status Normal
-    Write-Log -Verb "tempFilePath  " -Noun $tempFilePath -Path $log -Type Short -Status Normal
+    $uploadFrom  = $localTemp + $fileName
+    $uploadTo = $ftp.Path + $fileName
+    $downloadFrom  = $uploadTo
+    $downloadTo = $localTemp + (Get-Date).ToString("yyyyMMdd-HHmmss") + ".pdf"
+
+    Write-Log -Verb "uploadFrom" -Noun $uploadFrom -Path $log -Type Short -Status Normal
+    Write-Log -Verb "uploadTo" -Noun $uploadTo -Path $log -Type Short -Status Normal
+    Write-Log -Verb "downloadFrom" -Noun $downloadFrom -Path $log -Type Short -Status Normal
+    Write-Log -Verb "downloadTo" -Noun $downloadTo -Path $log -Type Short -Status Normal
 
 
 
     # Upload file from local to Ftp
 
-    Write-Log -Verb "UPLOAD FROM" -Noun $localFilePath -Path $log -Type Long -Status Normal
-    Write-Log -Verb "UPLOAD TO" -Noun $remoteFilePath -Path $log -Type Long -Status Normal
-    $upload = WebClient-UploadFile -Username $ftp.User -Password $ftp.Pass -RemoteFilePath $remoteFilePath -LocalFilePath $localFilePath
+    $upload = WebClient-UploadFile -Username $ftp.User -Password $ftp.Pass -RemoteFilePath $uploadTo -LocalFilePath $uploadFrom
 
     if($upload.Status -eq "Good"){
         Write-Log -Verb $upload.Verb -Noun $upload.Noun -Path $log -Type Long -Status $upload.Status
@@ -230,9 +226,7 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
     # Download file from Ftp to temp folder for verification
 
-    Write-Log -Verb "DOWNLOAD FROM" -Noun $remoteFilePath -Path $log -Type Long -Status Normal
-    Write-Log -Verb "DOWNLOAD TO" -Noun $tempFilePath -Path $log -Type Long -Status Normal
-    $download = WebClient-DownloadFile -Username $ftp.User -Password $ftp.Pass -RemoteFilePath $remoteFilePath -LocalFilePath $tempFilePath
+    $download = WebClient-DownloadFile -Username $ftp.User -Password $ftp.Pass -RemoteFilePath $downloadFrom -LocalFilePath $downloadTo
 
     if($download.Status -eq "Good"){
         Write-Log -Verb $download.Verb -Noun $download.Noun -Path $log -Type Long -Status $download.Status
@@ -243,7 +237,7 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
 
 
-    Write-Line -Length 50 -Path $log
+    Write-Line -Length 38 -Path $log
 
 }
 
@@ -273,7 +267,7 @@ if( ($expectedPage -ne $outputPage) -or ($upload.Status -eq "Bad") -or ($downloa
 
 ###################################################################################
 
-Write-Line -Length 50 -Path $log
+Write-Line -Length 38 -Path $log
 Write-Log -Verb "LOG END" -Noun $log -Path $log -Type Long -Status Normal
 if($hasError){ $mailSbj = "ERROR " + $scriptName }
 
