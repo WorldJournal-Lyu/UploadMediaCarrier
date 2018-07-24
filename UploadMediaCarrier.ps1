@@ -120,11 +120,11 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
             try{
 
                 Copy-Item $copyFrom $copyTo -ErrorAction Stop
-                Write-Log -Verb "COPY" -Noun $copyFrom -Path $log -Type Long -Status Good
+                Write-Log -Verb "COPY" -Noun $copyTo -Path $log -Type Long -Status Good
 
             }catch{
 
-                Write-Log -Verb "COPY" -Noun $copyFrom -Path $log -Type Long -Status Bad
+                Write-Log -Verb "COPY" -Noun $copyTo -Path $log -Type Long -Status Bad
         
             }
 
