@@ -34,7 +34,7 @@ $localTemp = "C:\temp\" + $scriptName + "\"
 if (!(Test-Path($localTemp))) {New-Item $localTemp -Type Directory | Out-Null}
 
 Write-Log -Verb "LOG START" -Noun $log -Path $log -Type Long -Status Normal
-Write-Line -Length 38 -Path $log
+Write-Line -Length 50 -Path $log
 
 ###################################################################################
 
@@ -55,7 +55,7 @@ Write-Log -Verb "db" -Noun $db.Name -Path $log -Type Short -Status Normal
 Write-Log -Verb "ftp" -Noun $ftp.Path -Path $log -Type Short -Status Normal
 Write-Log -Verb "ePaper" -Noun $ePaper.Path -Path $log -Type Short -Status Normal
 Write-Log -Verb "optimizeda" -Noun $optimizeda -Path $log -Type Short -Status Normal
-Write-Line -Length 38 -Path $log
+Write-Line -Length 50 -Path $log
 
 
 
@@ -91,7 +91,7 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
     Write-Log -Verb "pubid" -Noun $pubid -Path $log -Type Short -Status Normal
     Write-Log -Verb "pubname" -Noun $pubname -Path $log -Type Short -Status Normal
     Write-Log -Verb "expectedPage" -Noun $expectedPage -Path $log -Type Short -Status Normal
-    Write-Line -Length 38 -Path $log
+    Write-Line -Length 50 -Path $log
 
     $acrobat = New-Object -ComObject AcroExch.AVDoc
     $pdf     = $null
@@ -119,12 +119,13 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
             try{
 
+                Write-Log -Verb "COPY FROM" -Noun $copyFrom -Path $log -Type Long -Status Good
                 Copy-Item $copyFrom $copyTo -ErrorAction Stop
-                Write-Log -Verb "COPY" -Noun $copyTo -Path $log -Type Long -Status Good
+                Write-Log -Verb "COPY TO" -Noun $copyTo -Path $log -Type Long -Status Good
 
             }catch{
 
-                Write-Log -Verb "COPY" -Noun $copyTo -Path $log -Type Long -Status Bad
+                Write-Log -Verb "COPY TO" -Noun $copyTo -Path $log -Type Long -Status Bad
         
             }
 
@@ -175,7 +176,7 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
     # Save merged pdf file
 
-    Write-Line -Length 38 -Path $log
+    Write-Line -Length 50 -Path $log
 
     $fileName = "WorldJournal_" + $pubname + "_" + $workDate.ToString("yyyyMMdd") + ".pdf"
 
@@ -237,7 +238,7 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
 
 
-    Write-Line -Length 38 -Path $log
+    Write-Line -Length 50 -Path $log
 
 }
 
@@ -267,7 +268,7 @@ if( ($expectedPage -ne $outputPage) -or ($upload.Status -eq "Bad") -or ($downloa
 
 ###################################################################################
 
-Write-Line -Length 38 -Path $log
+Write-Line -Length 50 -Path $log
 Write-Log -Verb "LOG END" -Noun $log -Path $log -Type Long -Status Normal
 if($hasError){ $mailSbj = "ERROR " + $scriptName }
 
@@ -276,7 +277,7 @@ $emailParam = @{
     Pass    = $mailPass
     To      = $mailTo
     Subject = $mailSbj
-    Body    = $scriptName + " completed at " + (Get-Date).ToString("HH:mm:ss") + "`n`n" + $mailMsg
+    Body    = $mailMsg
     ScriptPath = $scriptPath
     Attachment = $log
 }
