@@ -100,10 +100,10 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
     
     $result | Where-Object{ $_.pubid -eq $pubid } | Select-Object section, page | ForEach-Object{
 
-        $pdfName  = $pubname + $workDate.ToString("yyyyMMdd") + $_.section + ($_.page).ToString("00") + ".pdf"
-        $copyFrom = $optimizeda + $pdfName
-        $copyTo   = $localTemp + $pdfName
-        Write-Log -Verb "pdfName" -Noun $pdfName -Path $log -Type Short -Status Normal
+        $pdfName1 = $pubname + $workDate.ToString("yyyyMMdd") + $_.section + ($_.page).ToString("00") + ".pdf"
+        $copyFrom = $optimizeda + $pdfName1
+        $copyTo   = $localTemp + $pdfName1
+        Write-Log -Verb "pdfName1" -Noun $pdfName1 -Path $log -Type Short -Status Normal
         Write-Log -Verb "copyFrom" -Noun $copyFrom -Path $log -Type Short -Status Normal
         Write-Log -Verb "copyTo" -Noun $copyTo -Path $log -Type Short -Status Normal
 
@@ -178,9 +178,9 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
     Write-Line -Length 50 -Path $log
 
-    $fileName = "WorldJournal_" + $pubname + "_" + $workDate.ToString("yyyyMMdd") + ".pdf"
+    $pdfName2 = "WorldJournal_" + $pubname + "_" + $workDate.ToString("yyyyMMdd") + ".pdf"
 
-    $output = $localTemp + $fileName
+    $output = $localTemp + $pdfName2
     $pdf.Save(1, $output) | Out-Null
     $outputPage = 0
     $outputPage = $pdf.GetNumPages()
@@ -200,11 +200,12 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
     # Set up upload and download variables
 
-    $uploadFrom  = $localTemp + $fileName
-    $uploadTo = $ftp.Path + $fileName
+    $uploadFrom  = $localTemp + $pdfName2
+    $uploadTo = $ftp.Path + $pdfName2
     $downloadFrom  = $uploadTo
     $downloadTo = $localTemp + (Get-Date).ToString("yyyyMMdd-HHmmss") + ".pdf"
 
+    Write-Log -Verb "pdfName2" -Noun $pdfname2 -Path $log -Type Short -Status Normal
     Write-Log -Verb "uploadFrom" -Noun $uploadFrom -Path $log -Type Short -Status Normal
     Write-Log -Verb "uploadTo" -Noun $uploadTo -Path $log -Type Short -Status Normal
     Write-Log -Verb "downloadFrom" -Noun $downloadFrom -Path $log -Type Short -Status Normal
