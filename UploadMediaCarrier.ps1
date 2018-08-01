@@ -45,7 +45,7 @@ Write-Line -Length 50 -Path $log
 $workDate = ((Get-Date).AddDays(0))
 $pubcode  = "'114', '146'"
 $section  = "'A', 'B', 'C', 'D'"
-$db       = Get-WJDatabase -Name marco6
+$db       = Get-WJDatabase -Name marco
 $ftp      = Get-WJFTP -Name MediaCarrier # -Name MediaCarrier # -Name WorldJournalNewYork
 $ePaper   = Get-WJPath -Name epaper
 $optimizeda = $ePaper.Path + $workDate.ToString("yyyyMMdd") + "\" + "optimizeda\"
