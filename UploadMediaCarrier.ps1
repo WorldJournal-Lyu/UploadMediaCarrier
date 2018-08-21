@@ -10,6 +10,9 @@ if (!($env:PSModulePath -match 'C:\\PowerShell\\_Modules')) {
     $env:PSModulePath = $env:PSModulePath + ';C:\PowerShell\_Modules\'
 }
 
+Get-Module -ListAvailable WorldJournal.* | Remove-Module -Force
+Get-Module -ListAvailable WorldJournal.* | Import-Module -Force
+
 $scriptPath = $MyInvocation.MyCommand.Path
 $scriptName = (($MyInvocation.MyCommand) -Replace ".ps1")
 $hasError   = $false
@@ -120,7 +123,8 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
             }catch{
 
                 Write-Log -Verb "COPY TO" -Noun $copyTo -Path $log -Type Long -Status Bad
-        
+                Write-Log -Verb "Exception" -Noun $_.Exception.Message -Path $log -Type Short -Status Bad
+       
             }
 
 
