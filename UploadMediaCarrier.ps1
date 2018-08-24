@@ -243,6 +243,20 @@ $result.pubid | Select-Object -Unique | ForEach-Object{
 
 
 
+# Set hasError status 
+
+if( ($expectedPage -ne $outputPage) -or ($upload.Status -eq "Bad") -or ($download.Status -eq "Bad") ){
+    $hasError = $true
+}
+
+
+
+
+
+###################################################################################
+
+Write-Line -Length 50 -Path $log
+
 # Delete temp folder
 
 Write-Log -Verb "REMOVE" -Noun $localTemp -Path $log -Type Long -Status Normal
@@ -254,18 +268,6 @@ try{
     $mailMsg = $mailMsg + (Write-Log -Verb "REMOVE" -Noun $temp -Path $log -Type Long -Status Bad -Output String) + "`n"
     $mailMsg = $mailMsg + (Write-Log -Verb "Exception" -Noun $_.Exception.Message -Path $log -Type Short -Status Bad -Output String) + "`n"
 }
-
-
-
-# Set hasError status 
-
-if( ($expectedPage -ne $outputPage) -or ($upload.Status -eq "Bad") -or ($download.Status -eq "Bad") ){
-    $hasError = $true
-}
-
-
-
-###################################################################################
 
 Write-Line -Length 50 -Path $log
 Write-Log -Verb "LOG END" -Noun $log -Path $log -Type Long -Status Normal
